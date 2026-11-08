@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MKARY QUREO - اداه مكاري</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --primary: #38bdf8;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+        * { box-sizing: border-box; font-family: 'Cairo', sans-serif; }
+        body {
+            margin: 0; padding: 0; background-color: var(--bg); color: var(--text);
+            display: flex; justify-content: center; align-items: center; min-height: 100vh;
+        }
+        .container {
+            width: 100%; max-width: 800px; padding: 20px;
+        }
+        .card {
+            background: var(--card); border-radius: 20px; padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #334155;
+        }
+        h1 { text-align: center; margin-top: 0; font-size: 28px; font-weight: 900; color: var(--primary); }
+        p.subtitle { text-align: center; color: var(--muted); margin-bottom: 30px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 700; }
+        input {
+            width: 100%; padding: 15px; border-radius: 12px; border: 1px solid #475569;
+            background: #0f172a; color: white; font-size: 16px; outline: none;
+            transition: 0.3s;
+        }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 10px rgba(56, 189, 248, 0.2); }
+        button {
+            width: 100%; padding: 15px; border-radius: 12px; border: none;
+            font-size: 18px; font-weight: 700; cursor: pointer; transition: 0.3s;
+            background: var(--primary); color: #0f172a;
+        }
+        button:hover { background: #0ea5e9; }
+        button:disabled { background: #475569; color: var(--muted); cursor: not-allowed; }
+        .btn-danger { background: var(--danger); color: white; margin-top: 10px; }
+        .btn-danger:hover { background: #dc2626; }
+        
+        .log-box {
+            background: #020617; border: 1px solid #1e293b; border-radius: 12px;
+            height: 300px; overflow-y: auto; padding: 15px; margin-top: 20px;
+            font-family: monospace; direction: ltr; text-align: left;
+        }
+        .log-item { margin-bottom: 5px; font-size: 14px; }
+        .log-item.info { color: #38bdf8; }
+        .log-item.success { color: #10b981; }
+        .log-item.error { color: #ef4444; }
+
+        .status-badge {
+            display: inline-block; padding: 5px 15px; border-radius: 20px;
+            font-size: 14px; font-weight: bold; margin-bottom: 20px;
+            background: #334155; color: white;
+        }
+        .status-badge.running { background: var(--primary); color: #000; animation: pulse 2s infinite; }
+        
+        @keyframes pulse {
+            0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; }
+        }
+        
+        .hidden { display: none; }
+        .flex { display: flex; gap: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- شاشة تسجيل الدخول -->
+    <div id="loginCard" class="card">
+        <h1>MKARY QUREO</h1>
+        <p class="subtitle">الأداة الذكية الجديدة - إصدار 2.0</p>
+        <div class="form-group">
+            <label>كود الطالب</label>
+            <input type="text" id="studentId" placeholder="أدخل كود الطالب...">
+        </div>
+        <div class="form-group">
+            <label>كلمة السر</label>
+            <input type="password" id="password" placeholder="أدخل كلمة السر...">
+        </div>
+        <button id="loginBtn" onclick="login()">دخول للمنصة</button>
+    </div>
+
+    <!-- شاشة الأداة -->
+    <div id="appCard" class="card hidden">
+        <h1>MKARY QUREO</h1>
+        <div style="text-align: center;">
+            <span id="statusBadge" class="status-badge">جاهز للبدء</span>
+        </div>
+        
+        <div class="flex">
+            <button id="startBtn" onclick="start()">بدء الحل التلقائي</button>
+            <button class="btn-danger hidden" id="stopBtn" onclick="stop()">إيقاف</button>
+        </div>
+
+        <div class="log-box" id="logBox">
+            <div class="log-item info">في انتظار بدء العملية...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let pollInterval;
+
+    async function login() {
+        const btn = document.getElementById('loginBtn');
+        const studentId = document.getElementById('studentId').value;
+        const password = document.getElementById('password').value;
+
+        if (!studentId || !password) return alert("أدخل البيانات كاملة");
+
+        btn.disabled = true;
+        btn.innerText = "جاري الدخول...";
+
+        try {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({student_id: studentId, password: password})
+            });
+            const data = await res.json();
+            
+            if (data.ok) {
+                document.getElementById('loginCard').classList.add('hidden');
+                document.getElementById('appCard').classList.remove('hidden');
+                poll();
+            } else {
+                alert(data.error);
+            }
+        } catch (e) {
+            alert("خطأ في الاتصال");
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "دخول للمنصة";
+        }
+    }
+
+    async function start() {
+        document.getElementById('startBtn').classList.add('hidden');
+        document.getElementById('stopBtn').classList.remove('hidden');
+        document.getElementById('statusBadge').innerText = "قيد التشغيل...";
+        document.getElementById('statusBadge').className = "status-badge running";
+        
+        await fetch('/api/solve', {method: 'POST'});
+    }
+
+    async function stop() {
+        await fetch('/api/stop', {method: 'POST'});
+    }
+
+    async function poll() {
+        if(pollInterval) clearInterval(pollInterval);
+        pollInterval = setInterval(async () => {
+            const res = await fetch('/api/status');
+            const data = await res.json();
+            
+            if (!data.running && !document.getElementById('startBtn').classList.contains('hidden')) {
+                // Still idle
+            } else if (!data.running && document.getElementById('stopBtn').classList.contains('hidden') === false) {
+                // Finished
+                document.getElementById('startBtn').classList.remove('hidden');
+                document.getElementById('stopBtn').classList.add('hidden');
+                document.getElementById('statusBadge').innerText = "انتهى التشغيل";
+                document.getElementById('statusBadge').className = "status-badge";
+            }
+
+            const logBox = document.getElementById('logBox');
+            logBox.innerHTML = '';
+            data.logs.forEach(log => {
+                const div = document.createElement('div');
+                div.className = `log-item ${log.includes('❌') ? 'error' : log.includes('✅') || log.includes('🎉') ? 'success' : 'info'}`;
+                div.innerText = `> ${log}`;
+                logBox.appendChild(div);
+            });
+            logBox.scrollTop = logBox.scrollHeight;
+        }, 1000);
+    }
+</script>
+</body>
+</html>
